@@ -77,12 +77,12 @@ def process_file(fname):
 
 def make_preview():
     preview_column = sg.Column([
-        [sg.Frame('Preview:', [[sg.Image(key='-PREVIEW-', size=(400, 400), expand_x=True, expand_y=True)],
+        [sg.Frame('Preview:', [[sg.Image(key='-PREVIEW-', size=(400, 400), expand_x=False, expand_y=False)],
                                [sg.ReadFormButton("Prev"), sg.ReadFormButton("Next")],
                                [sg.Text("Page:"), sg.Text("1 of", key="-PAGENUMBER-"),
                                 # str(cur_page + 1), size=(5, 1), do_not_clear=True, key="-PageNumber-"
-                                sg.Text("Pages", key="-TotalPages-")]], element_justification='c', title_location='n')], ], pad=(0, 0),
-        element_justification='c')
+                                sg.Text("Pages", key="-TotalPages-")]], element_justification='c', title_location='n')]],
+        element_justification='c', size=(450, 500), pad=(0, 0))
     return preview_column
 
 
@@ -113,7 +113,7 @@ def make_window(theme):
             [sg.Multiline(
                 'Demo of a Multi-Line Text Element!\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nYou get the point.',
                 size=(45, 5), expand_x=False, expand_y=True, k='-MLINE-')],
-            [sg.Button('Open File'), sg.Button('Popup')]])], ], pad=(0, 0), element_justification='c')
+            [sg.Button('Open File'), sg.Button('Popup')]])], ], size=(440, 440), pad=(0, 0), element_justification='c')
 
     extract_layout = [[extract_layout_column1, make_preview()]]
 
@@ -222,6 +222,7 @@ def main():
                                       file_types=(("PDF Files", "*.pdf"),), keep_on_top=True)
             pdfdocument, current_image, page_count, page_number = process_file(fname)
             # print(type(mydata))
+            window.Element('-PAGENUMBER-').Update('1 of')
             window.Element('-PREVIEW-').Update(data=current_image)
             window.Element('-TotalPages-').Update(str(page_count) + ' Pages')
             # sg.popup("You chose: " + str(fname), keep_on_top=True)
