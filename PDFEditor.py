@@ -53,6 +53,18 @@ def process_file(fname):
     return mydata, clip_pos
 
 
+def make_preview():
+    preview_column = sg.Column([
+        [sg.Frame('Preview:', [[sg.Image(key='-PREVIEW-', size=(300, 420))],
+                               [sg.ReadFormButton("Prev"), sg.ReadFormButton("Next")],
+                               [sg.Text("Page:"), sg.InputText(
+                                   "Page", size=(5, 1), do_not_clear=True, key="-PageNumber-"),
+                                # str(cur_page + 1), size=(5, 1), do_not_clear=True, key="-PageNumber-"
+                                sg.Text("Pages")]], element_justification='c', title_location='n')], ], pad=(0, 0),
+        element_justification='c')
+    return preview_column
+
+
 def make_window(theme):
     sg.theme(theme)
     menu_def = [['&Application', ['&Exit']],
@@ -64,17 +76,11 @@ def make_window(theme):
     data = [["John", 10], ["Jen", 5]]
     headings = ["Name", "Score"]
 
-    mydata = None
-    col2 = sg.Column([[sg.Frame('Preview:', [[sg.Image(data=mydata, key='-PREVIEW-')]])]],pad=(0,0))
-
-    # mydata = None
-    # image_elem = sg.Image(data=mydata, key='-PREVIEW-')
-
-    col1 = sg.Column([
+    extract_layout_column1 = sg.Column([
         [sg.Frame('Categories:', [[sg.Radio('Websites', 'radio1', default=True, key='-WEBSITES-', size=(10, 1)),
                                    sg.Radio('Software', 'radio1', key='-SOFTWARE-', size=(10, 1))]], )],
         # Information sg.Frame
-        [sg.Frame('Information:',[
+        [sg.Frame('Information:', [
             [sg.Text('Anything that requires user-input is in this tab!')],
             [sg.Input(key='-INPUT-')],
             [sg.Checkbox('Checkbox', default=True, k='-CB-')],
@@ -84,15 +90,18 @@ def make_window(theme):
              sg.OptionMenu(values=('Option 1', 'Option 2', 'Option 3'), k='-OPTION MENU-'), ],
             [sg.Spin([i for i in range(1, 11)], initial_value=10, k='-SPIN-'), sg.Text('Spin')],
             [sg.Multiline(
-             'Demo of a Multi-Line Text Element!\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nYou get the point.',
-             size=(45, 5), expand_x=False, expand_y=True, k='-MLINE-')],
-            [sg.Button('Open File'), sg.Button('Popup')]])], ], pad=(0,0))
+                'Demo of a Multi-Line Text Element!\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nYou get the point.',
+                size=(45, 5), expand_x=False, expand_y=True, k='-MLINE-')],
+            [sg.Button('Open File'), sg.Button('Popup')]])], ], pad=(0, 0), element_justification='c')
 
-    extract_layout = [[col1, col2]]
+    extract_layout = [[extract_layout_column1, make_preview()]]
 
-    asthetic_layout = [[sg.T('Anything that you would use for asthetics is in this tab!')],
+    aesthetic_layout_column1 = sg.Column([
+        [sg.Frame('Categories:', [[sg.T('Anything that you would use for asthetics is in this tab!')],
                        [sg.ProgressBar(100, orientation='h', size=(20, 20), key='-PROGRESS BAR-'),
-                        sg.Button('Test Progress bar')]]
+                        sg.Button('Test Progress bar')]], pad=(0, 0), element_justification='c')]])
+
+    asthetic_layout = [[aesthetic_layout_column1, make_preview()]]
 
     logging_layout = [[sg.Text("Anything printed will display here!")],
                       [sg.Multiline(size=(60, 15), font='Courier 8', expand_x=False, expand_y=True, write_only=True,
@@ -142,7 +151,7 @@ def make_window(theme):
                        use_custom_titlebar=True, finalize=True, keep_on_top=True,
                        # scaling=2.0,
                        )
-    window.set_min_size(size=(800, 400))
+    window.set_min_size(size=(700, 400))
     return window
 
 
