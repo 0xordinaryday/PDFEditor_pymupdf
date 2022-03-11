@@ -7,60 +7,81 @@ import PySimpleGUI as sg
 import sys
 import fitz
 
+display_list_table = []
+
 if sys.platform == "win32":
     import ctypes
 
     ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
 
-def get_page(doc, pno, max_size=None, dlist=None):
-    dlist_tab = []
+def get_page(pdf_document, pagenumber):
     """Return a tkinter.PhotoImage or a PNG image for a document page number.
+    :param dlist:
     :arg int pno: 0-based page number
     :arg zoom: top-left of old clip rect, and one of -1, 0, +1 for dim. x or y
                to indicate the arrow key pressed
     :arg max_size: (width, height) of available image area
     :arg bool first: if True, we cannot use tkinter
     """
-    dlist_tab = [None] * 2  # get display list of page number
+    global display_list_table
+    dlist = display_list_table[pagenumber]  # get display list of page number
     if not dlist:  # create if not yet there
-        dlist_tab[pno] = doc[pno].get_displaylist()
-        dlist = dlist_tab[pno]
+        display_list_table[pagenumber] = pdf_document[pagenumber].get_displaylist()
+        dlist = display_list_table[pagenumber]
     r = dlist.rect  # the page rectangle
     clip = r
-    # ensure image fits screen:
-    # exploit, but do not exceed width or height
-    zoom_0 = 0.5
 
-    mat_0 = fitz.Matrix(zoom_0, zoom_0)
+    if clip.width / clip.height < 400 / 400:
+        # clip is narrower: zoom to window HEIGHT
+        zoom = 400 / clip.height
+    else:  # clip is broader: zoom to window WIDTH
+        zoom = 400 / clip.width
+    mat = fitz.Matrix(zoom, zoom)
 
-    pix = dlist.get_pixmap(matrix=mat_0, alpha=False)
-    img = pix.tobytes("ppm")  # make PPM image from pixmap for tkinter
-    return img, clip.tl  # return image, clip position
+    pix = dlist.get_pixmap(matrix=mat, clip=clip, alpha=False)
+    current_image = pix.tobytes("ppm")  # make PPM image from pixmap for tkinter
+    return current_image, pagenumber  # return image, don't care about clip position
+
+
+def is_enter(btn):
+    return btn.startswith("Return:") or btn == chr(13)
+
+
+def is_quit(btn):
+    return btn == chr(27) or btn.startswith("Escape:")
+
+
+def is_next(btn):
+    return btn.startswith("Next") or btn == "MouseWheel:Down"
+
+
+def is_prev(btn):
+    return btn.startswith("Prev") or btn == "MouseWheel:Up"
+
+
+def is_mykeys(btn):
+    return any((is_enter(btn), is_next(btn), is_prev(btn)))
 
 
 def process_file(fname):
-    doc = fitz.open(fname)
-    page_count = len(doc)
-    # print(page_count)
-    dlist_tab = [None] * page_count
+    global display_list_table
+    pdf_document = fitz.open(fname)
+    page_count = len(pdf_document)
+    display_list_table = [None] * page_count
 
-    SOME_VAL = 50
-    max_size = (SOME_VAL, SOME_VAL)
-
-    cur_page = 0
-    mydata, clip_pos = get_page(doc, cur_page, max_size=max_size)
-    return mydata, clip_pos
+    current_page = 0
+    current_image, pagenumber = get_page(pdf_document, current_page)
+    return pdf_document, current_image, page_count, pagenumber
 
 
 def make_preview():
     preview_column = sg.Column([
-        [sg.Frame('Preview:', [[sg.Image(key='-PREVIEW-', size=(300, 420))],
+        [sg.Frame('Preview:', [[sg.Image(key='-PREVIEW-', size=(400, 400), expand_x=True, expand_y=True)],
                                [sg.ReadFormButton("Prev"), sg.ReadFormButton("Next")],
-                               [sg.Text("Page:"), sg.InputText(
-                                   "Page", size=(5, 1), do_not_clear=True, key="-PageNumber-"),
+                               [sg.Text("Page:"), sg.Text("1 of", key="-PAGENUMBER-"),
                                 # str(cur_page + 1), size=(5, 1), do_not_clear=True, key="-PageNumber-"
-                                sg.Text("Pages")]], element_justification='c', title_location='n')], ], pad=(0, 0),
+                                sg.Text("Pages", key="-TotalPages-")]], element_justification='c', title_location='n')], ], pad=(0, 0),
         element_justification='c')
     return preview_column
 
@@ -151,7 +172,7 @@ def make_window(theme):
                        use_custom_titlebar=True, finalize=True, keep_on_top=True,
                        # scaling=2.0,
                        )
-    window.set_min_size(size=(700, 400))
+    window.set_min_size(size=(800, 400))
     return window
 
 
@@ -199,11 +220,32 @@ def main():
             # folder_or_file = sg.popup_get_file('Choose your file', keep_on_top=True)
             fname = sg.popup_get_file("Select file and filetype to open:", title="PyMuPDF Document Browser",
                                       file_types=(("PDF Files", "*.pdf"),), keep_on_top=True)
-            mydata, clip_pos = process_file(fname)
-            print(type(mydata))
-            window.Element('-PREVIEW-').Update(data=mydata)
-            sg.popup("You chose: " + str(fname), keep_on_top=True)
+            pdfdocument, current_image, page_count, page_number = process_file(fname)
+            # print(type(mydata))
+            window.Element('-PREVIEW-').Update(data=current_image)
+            window.Element('-TotalPages-').Update(str(page_count) + ' Pages')
+            # sg.popup("You chose: " + str(fname), keep_on_top=True)
             print("[LOG] User chose file: " + str(fname))
+        elif event == "Next":
+            if 'pdfdocument' in locals():
+                if page_number < page_count - 1:  # have to wrap around
+                    next_page = page_number + 1
+                else:
+                    next_page = 0
+                new_data, page_number = get_page(pdfdocument, next_page)
+                # print(new_data)
+                window.Element('-PREVIEW-').Update(data=new_data)
+                window.Element('-PAGENUMBER-').Update(str(page_number + 1) + ' of')
+        elif event == "Prev":
+            if 'pdfdocument' in locals():
+                if page_number > 0:  # have to wrap around
+                    next_page = page_number - 1
+                else:
+                    next_page = page_count - 1
+                new_data, page_number = get_page(pdfdocument, next_page)
+                # print(new_data)
+                window.Element('-PREVIEW-').Update(data=new_data)
+                window.Element('-PAGENUMBER-').Update(str(page_number + 1) + ' of')
         elif event == "Set Theme":
             print("[LOG] Clicked Set Theme!")
             theme_chosen = values['-THEME LISTBOX-'][0]
