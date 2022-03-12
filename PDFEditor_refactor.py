@@ -112,6 +112,13 @@ def make_explode_frame():
     return explode_frame
 
 
+def make_delete_frame():
+    delete_frame = [sg.Frame('Delete Function:', [[
+        sg.Button('Run deletion', key='-DODELETION-'), sg.Text('Delete from'), sg.InputText(key='-DELETEFROM-', size=6)
+        , sg.Text('Delete to'), sg.InputText(key='-DELETETO-', size=6)]], key='-DELETEFRAME-', visible=False)]
+    return delete_frame
+
+
 def make_window(theme):
     sg.theme(theme)
     menu_def = [['&Application', ['&Exit']],
@@ -125,7 +132,7 @@ def make_window(theme):
     layout = [[sg.MenubarCustom(menu_def, background_color='white', text_color='black', key='-MENU-',
                                 font=('Roboto', 10), tearoff=False)]]
 
-    layout += [[make_main_frame(), make_extract_frame(), make_explode_frame(), make_preview()]]
+    layout += [[make_main_frame(), make_extract_frame(), make_delete_frame(), make_explode_frame(), make_preview()]]
 
     layout[-1].append(sg.Sizegrip())
     window = sg.Window('PDF Editor', layout, right_click_menu=right_click_menu_def,
@@ -172,6 +179,45 @@ def do_explosion(fname):
         out_pdf = fitz.open()
         out_pdf.insert_pdf(src_pdf, from_page=page, to_page=page)
         out_pdf.save(directory + '{}_page_{}.pdf'.format(basename, page + 1))
+
+
+def do_deletion(fname, page_from, page_to):
+    print('checking validity')
+    if not valid_page_range(fname, page_from, page_to):
+        sg.popup("There is something wrong with the specified range", keep_on_top=True)
+        print('invalid')
+    else:
+        page_from = int(page_from) - 1
+        page_to = int(page_to) - 1
+        src_pdf = fitz.open(fname)
+        src_pdf.delete_pages(page_from, page_to)
+        save_filename = tk.filedialog.asksaveasfilename(filetypes=[('PDF', '.pdf')])
+        src_pdf.save(save_filename, garbage=3, clean=True, deflate=True)
+
+
+def digits_only(string_to_test):
+    digits = '0123456789'
+    for entry in string_to_test:
+        if entry not in digits:
+            return False
+    return True
+
+
+def valid_page_range(fname, page_from, page_to):
+    src_pdf = fitz.open(fname)
+    print(len(src_pdf))
+    if not digits_only(page_from):
+        return False  # not an integer
+    elif not digits_only(page_to):
+        return False  # not an integer
+    elif page_to < page_from:
+        return False  # delete_to must be >= delete_from
+    elif int(page_from) <= 0 or int(page_to) <= 0:
+        return False  # won't accept negative numbers and zero indexing
+    elif int(page_to) > len(src_pdf):
+        return False  # can't delete page number greater than document length
+    else:
+        return True
 
 
 def main():
@@ -232,6 +278,17 @@ def main():
         elif event == "-EXPLODEDOCUMENT-":
             print("[LOG] Extracting a page")
             do_explosion(fname)
+        elif event == "-DELETE-":
+            print("[LOG] Open file for delete")
+            fname, pdfdocument, current_image, page_count, page_number = setup_preview_window(window)
+            print('fname is ', fname)
+            window.Element('-DELETEFRAME-').Update(visible=True)
+            print("[LOG] User chose file: " + str(fname))
+        elif event == "-DODELETION-":
+            print("[LOG] Deleting a page")
+            page_from = values['-DELETEFROM-']
+            page_to = values['-DELETETO-']
+            do_deletion(fname, page_from, page_to)
         elif event == "Next":
             if 'pdfdocument' in locals():
                 if page_number < page_count - 1:  # have to wrap around
