@@ -2,7 +2,6 @@
 """
 
 """
-import PyPDF2
 import PySimpleGUI as sg
 import sys
 import fitz
@@ -131,14 +130,14 @@ def make_window(theme):
     layout[-1].append(sg.Sizegrip())
     window = sg.Window('PDF Editor', layout, right_click_menu=right_click_menu_def,
                        right_click_menu_tearoff=True, grab_anywhere=True, resizable=True, margins=(0, 0),
-                       use_custom_titlebar=True, finalize=True, keep_on_top=True, location=(50,50))
+                       use_custom_titlebar=True, finalize=True, keep_on_top=True, location=(50, 50))
     window.set_min_size(size=(0, 0))
     return window
 
 
 def setup_preview_window(mywindow):
     fname = sg.popup_get_file("Select file and filetype to open:", title="PyMuPDF Document Browser",
-                              file_types=(("PDF Files", "*.pdf"),), keep_on_top=True, location=(200,200))
+                              file_types=(("PDF Files", "*.pdf"),), keep_on_top=True, location=(200, 200))
     if fname is None or fname == '':  # user pressed X or Cancel
         return None, None, None, None, None
     else:
@@ -158,27 +157,21 @@ def do_extraction(fname, page_number):
         # p = pathlib.Path(fname)
         # stem = p.stem
         # directory = p.parent
-        src_pdf = PyPDF2.PdfFileReader(fname)
-        pdf_writer = PyPDF2.PdfFileWriter()
-        pdf_writer.addPage(src_pdf.getPage(page_number))
-        # outfile = str(directory) + '/' + str(stem) + '_page_' + str(page_number + 1) + '.pdf'
-        outfile = save_filename
-        with open(outfile, 'wb') as out:
-            pdf_writer.write(out)
+        src_pdf = fitz.open(fname)
+        out_pdf = fitz.open()
+        out_pdf.insert_pdf(src_pdf, from_page=page_number, to_page=page_number)
+        out_pdf.save(save_filename)
 
 
 def do_explosion(fname):
     basename = os.path.splitext(os.path.basename(fname))[0]
     directory = os.path.dirname(fname) + '/'
 
-    source_pdf = PyPDF2.PdfFileReader(fname)
-    for page in range(source_pdf.getNumPages()):
-        pdf_writer = PyPDF2.PdfFileWriter()
-        pdf_writer.addPage(source_pdf.getPage(page))
-        output_filename = directory + '{}_page_{}.pdf'.format(basename, page + 1)
-
-        with open(output_filename, 'wb') as out:
-            pdf_writer.write(out)
+    src_pdf = fitz.open(fname)
+    for page in range(len(src_pdf)):
+        out_pdf = fitz.open()
+        out_pdf.insert_pdf(src_pdf, from_page=page, to_page=page)
+        out_pdf.save(directory + '{}_page_{}.pdf'.format(basename, page + 1))
 
 
 def main():
