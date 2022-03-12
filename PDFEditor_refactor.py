@@ -6,7 +6,8 @@ import PyPDF2
 import PySimpleGUI as sg
 import sys
 import fitz
-import pathlib
+import os
+import tkinter as tk
 
 display_list_table = []
 
@@ -106,6 +107,12 @@ def make_extract_frame():
     return extract_frame
 
 
+def make_explode_frame():
+    explode_frame = [sg.Frame('Explode Functions:', [[
+        sg.Button('Explode current document', key='-EXPLODEDOCUMENT-')]], key='-EXPLODEFRAME-', visible=False)]
+    return explode_frame
+
+
 def make_window(theme):
     sg.theme(theme)
     menu_def = [['&Application', ['&Exit']],
@@ -119,7 +126,7 @@ def make_window(theme):
     layout = [[sg.MenubarCustom(menu_def, background_color='white', text_color='black', key='-MENU-',
                                 font=('Roboto', 10), tearoff=False)]]
 
-    layout += [[make_main_frame(), make_extract_frame(), make_preview()]]
+    layout += [[make_main_frame(), make_extract_frame(), make_explode_frame(), make_preview()]]
 
     layout[-1].append(sg.Sizegrip())
     window = sg.Window('PDF Editor', layout, right_click_menu=right_click_menu_def,
@@ -134,25 +141,46 @@ def make_window(theme):
 def setup_preview_window(mywindow):
     fname = sg.popup_get_file("Select file and filetype to open:", title="PyMuPDF Document Browser",
                               file_types=(("PDF Files", "*.pdf"),), keep_on_top=True)
-    pdfdocument, current_image, page_count, page_number = process_file(fname)
-    # print(type(mydata))
-    mywindow.Element('-PREVIEWFRAME-').Update(visible=True)
-    mywindow.Element('-PAGENUMBER-').Update('1 of')
-    mywindow.Element('-PREVIEW-').Update(data=current_image)
-    mywindow.Element('-TotalPages-').Update(str(page_count) + ' Pages')
-    return fname, pdfdocument, current_image, page_count, page_number
+    if fname is None or fname == '':  # user pressed X or Cancel
+        return None, None, None, None, None
+    else:
+        pdfdocument, current_image, page_count, page_number = process_file(fname)
+        # print(type(mydata))
+        mywindow.Element('-PREVIEWFRAME-').Update(visible=True)
+        mywindow.Element('-PAGENUMBER-').Update('1 of')
+        mywindow.Element('-PREVIEW-').Update(data=current_image)
+        mywindow.Element('-TotalPages-').Update(str(page_count) + ' Pages')
+        return fname, pdfdocument, current_image, page_count, page_number
 
 
-def do_extraction(fname, page_number):
-    p = pathlib.Path(fname)
-    stem = p.stem
-    directory = p.parent
-    src_pdf = PyPDF2.PdfFileReader(fname)
-    pdf_writer = PyPDF2.PdfFileWriter()
-    pdf_writer.addPage(src_pdf.getPage(page_number))
-    outfile = str(directory) + '/' + str(stem) + '_page_' + str(page_number + 1) + '.pdf'
-    with open(outfile, 'wb') as out:
-        pdf_writer.write(out)
+def do_extraction(window, fname, page_number):
+    save_filename = tk.filedialog.asksaveasfilename(filetypes=[('PDF', '.pdf')])
+    if save_filename:
+        print(save_filename)
+        # p = pathlib.Path(fname)
+        # stem = p.stem
+        # directory = p.parent
+        src_pdf = PyPDF2.PdfFileReader(fname)
+        pdf_writer = PyPDF2.PdfFileWriter()
+        pdf_writer.addPage(src_pdf.getPage(page_number))
+        # outfile = str(directory) + '/' + str(stem) + '_page_' + str(page_number + 1) + '.pdf'
+        outfile = save_filename
+        with open(outfile, 'wb') as out:
+            pdf_writer.write(out)
+
+
+def do_explosion(fname):
+    basename = os.path.splitext(os.path.basename(fname))[0]
+    directory = os.path.dirname(fname) + '/'
+
+    source_pdf = PyPDF2.PdfFileReader(fname)
+    for page in range(source_pdf.getNumPages()):
+        pdf_writer = PyPDF2.PdfFileWriter()
+        pdf_writer.addPage(source_pdf.getPage(page))
+        output_filename = directory + '{}_page_{}.pdf'.format(basename, page + 1)
+
+        with open(output_filename, 'wb') as out:
+            pdf_writer.write(out)
 
 
 def main():
@@ -197,15 +225,22 @@ def main():
         elif event == "-EXTRACT-":
             print("[LOG] Open file for extract")
             fname, pdfdocument, current_image, page_count, page_number = setup_preview_window(window)
+            print('fname is ', fname)
             window.Element('-EXTRACTFRAME-').Update(visible=True)
             print("[LOG] User chose file: " + str(fname))
         elif event == "-EXTRACTCURRENTPAGE-":
             print("[LOG] Extracting a page")
-            do_extraction(fname, page_number)
+            do_extraction(window, fname, page_number)
             # print(fname + ' ' + str(page_count) + ' ' + str(page_number))
         elif event == "-EXPLODE-":
             print("[LOG] Open file for explode")
             fname, pdfdocument, current_image, page_count, page_number = setup_preview_window(window)
+            print('fname is ', fname)
+            window.Element('-EXPLODEFRAME-').Update(visible=True)
+            print("[LOG] User chose file: " + str(fname))
+        elif event == "-EXPLODEDOCUMENT-":
+            print("[LOG] Extracting a page")
+            do_explosion(window, fname)
         elif event == "Next":
             if 'pdfdocument' in locals():
                 if page_number < page_count - 1:  # have to wrap around
