@@ -131,16 +131,14 @@ def make_window(theme):
     layout[-1].append(sg.Sizegrip())
     window = sg.Window('PDF Editor', layout, right_click_menu=right_click_menu_def,
                        right_click_menu_tearoff=True, grab_anywhere=True, resizable=True, margins=(0, 0),
-                       use_custom_titlebar=True, finalize=True, keep_on_top=True,
-                       # scaling=2.0,
-                       )
+                       use_custom_titlebar=True, finalize=True, keep_on_top=True, location=(50,50))
     window.set_min_size(size=(0, 0))
     return window
 
 
 def setup_preview_window(mywindow):
     fname = sg.popup_get_file("Select file and filetype to open:", title="PyMuPDF Document Browser",
-                              file_types=(("PDF Files", "*.pdf"),), keep_on_top=True)
+                              file_types=(("PDF Files", "*.pdf"),), keep_on_top=True, location=(200,200))
     if fname is None or fname == '':  # user pressed X or Cancel
         return None, None, None, None, None
     else:
@@ -153,7 +151,7 @@ def setup_preview_window(mywindow):
         return fname, pdfdocument, current_image, page_count, page_number
 
 
-def do_extraction(window, fname, page_number):
+def do_extraction(fname, page_number):
     save_filename = tk.filedialog.asksaveasfilename(filetypes=[('PDF', '.pdf')])
     if save_filename:
         print(save_filename)
@@ -230,7 +228,7 @@ def main():
             print("[LOG] User chose file: " + str(fname))
         elif event == "-EXTRACTCURRENTPAGE-":
             print("[LOG] Extracting a page")
-            do_extraction(window, fname, page_number)
+            do_extraction(fname, page_number)
             # print(fname + ' ' + str(page_count) + ' ' + str(page_number))
         elif event == "-EXPLODE-":
             print("[LOG] Open file for explode")
@@ -240,7 +238,7 @@ def main():
             print("[LOG] User chose file: " + str(fname))
         elif event == "-EXPLODEDOCUMENT-":
             print("[LOG] Extracting a page")
-            do_explosion(window, fname)
+            do_explosion(fname)
         elif event == "Next":
             if 'pdfdocument' in locals():
                 if page_number < page_count - 1:  # have to wrap around
