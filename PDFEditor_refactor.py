@@ -101,22 +101,34 @@ def make_main_frame():
 
 
 def make_extract_frame():
-    extract_frame = [sg.Frame('Extract Functions:', [[
-        sg.Button('Extract current page', key='-EXTRACTCURRENTPAGE-')]], key='-EXTRACTFRAME-', visible=False)]
-    return extract_frame
+    #  note tab group is expecting list[list] so this is double listed but a frame doesn't strictly need to be by itself
+    extract_layout = [
+        [sg.Button('Open File', key='-EXTRACT-')],
+        [sg.Button('Extract current page', key='-EXTRACTCURRENTPAGE-')]]
+    return extract_layout
 
 
 def make_explode_frame():
-    explode_frame = [sg.Frame('Explode Functions:', [[
-        sg.Button('Explode current document', key='-EXPLODEDOCUMENT-')]], key='-EXPLODEFRAME-', visible=False)]
-    return explode_frame
+    explode_layout = [
+        [sg.Button('Open File', key='-EXPLODE-')],
+        [sg.Button('Explode current document', key='-EXPLODEDOCUMENT-')]]
+    return explode_layout
 
 
 def make_delete_frame():
-    delete_frame = [sg.Frame('Delete Function:', [[
-        sg.Button('Run deletion', key='-DODELETION-'), sg.Text('Delete from'), sg.InputText(key='-DELETEFROM-', size=6)
-        , sg.Text('Delete to'), sg.InputText(key='-DELETETO-', size=6)]], key='-DELETEFRAME-', visible=False)]
-    return delete_frame
+    delete_layout = [
+        [sg.Button('Open File', key='-DELETE-')],
+        [sg.Button('Run deletion', key='-DODELETION-'), sg.Text('Delete from'), sg.InputText(key='-DELETEFROM-', size=6)
+            , sg.Text('Delete to'), sg.InputText(key='-DELETETO-', size=6)]]
+    return delete_layout
+
+
+def make_tab_group():
+    tab_group_layout = [[sg.Tab('Extract', make_extract_frame(), key='-EXTRACTTAB-'),
+                         sg.Tab('Explode', make_explode_frame(), key='-EXPLODETAB-'),
+                         sg.Tab('Delete', make_delete_frame(), key='-DELETETAB-'),
+                         ]]
+    return tab_group_layout
 
 
 def make_window(theme):
@@ -132,7 +144,7 @@ def make_window(theme):
     layout = [[sg.MenubarCustom(menu_def, background_color='white', text_color='black', key='-MENU-',
                                 font=('Calibri', 10), tearoff=False)]]
 
-    layout += [[make_main_frame(), make_extract_frame(), make_delete_frame(), make_explode_frame(), make_preview()]]
+    layout += [[[sg.TabGroup(make_tab_group(), enable_events=True, key='-TABGROUP-')], make_preview()]]
 
     layout[-1].append(sg.Sizegrip())
     window = sg.Window('PDF Editor', layout, right_click_menu=right_click_menu_def,
@@ -145,13 +157,13 @@ def make_window(theme):
 
 def setup_preview_window(mywindow):
     fname = sg.popup_get_file("Select file and filetype to open:", title="PyMuPDF Document Browser",
-                              file_types=(("PDF Files", "*.pdf"),), keep_on_top=True, location=(200, 200))
+                              file_types=(("PDF Files", "*.pdf"),), keep_on_top=True, location=(200, 200), font=('Calibri', 10))
     if fname is None or fname == '':  # user pressed X or Cancel
         return None, None, None, None, None
     else:
         pdfdocument, current_image, page_count, page_number = process_file(fname)
         # print(type(mydata))
-        mywindow.Element('-PREVIEWFRAME-').Update(visible=True)
+        #  mywindow.Element('-PREVIEWFRAME-').Update(visible=True)
         mywindow.Element('-PAGENUMBER-').Update('1 of')
         mywindow.Element('-PREVIEW-').Update(data=current_image)
         mywindow.Element('-TotalPages-').Update(str(page_count) + ' Pages')
@@ -171,7 +183,7 @@ def do_extraction(fname, page_number):
         out_pdf.save(save_filename)
 
 
-def do_explosion(window,fname):
+def do_explosion(window, fname):
     basename = os.path.splitext(os.path.basename(fname))[0]
     directory = os.path.dirname(fname) + '/'
 
@@ -269,7 +281,7 @@ def main():
             print("[LOG] Open file for extract")
             fname, pdfdocument, current_image, page_count, page_number = setup_preview_window(window)
             print('fname is ', fname)
-            window.Element('-EXTRACTFRAME-').Update(visible=True)
+            window.Element('-PREVIEWFRAME-').Update(visible=True)
             print("[LOG] User chose file: " + str(fname))
         elif event == "-EXTRACTCURRENTPAGE-":
             print("[LOG] Extracting a page")
@@ -279,16 +291,16 @@ def main():
             print("[LOG] Open file for explode")
             fname, pdfdocument, current_image, page_count, page_number = setup_preview_window(window)
             print('fname is ', fname)
-            window.Element('-EXPLODEFRAME-').Update(visible=True)
+            window.Element('-PREVIEWFRAME-').Update(visible=True)
             print("[LOG] User chose file: " + str(fname))
         elif event == "-EXPLODEDOCUMENT-":
             print("[LOG] Extracting a page")
-            do_explosion(window,fname)
+            do_explosion(window, fname)
         elif event == "-DELETE-":
             print("[LOG] Open file for delete")
             fname, pdfdocument, current_image, page_count, page_number = setup_preview_window(window)
             print('fname is ', fname)
-            window.Element('-DELETEFRAME-').Update(visible=True)
+            window.Element('-PREVIEWFRAME-').Update(visible=True)
             print("[LOG] User chose file: " + str(fname))
         elif event == "-DODELETION-":
             print("[LOG] Deleting a page")
