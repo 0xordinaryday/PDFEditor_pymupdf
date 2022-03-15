@@ -101,10 +101,11 @@ def make_main_frame():
 
 
 def make_extract_frame():
-    #  note tab group is expecting list[list] so this is double listed but a frame doesn't strictly need to be by itself
+    #  note tab group is expecting list[list] so this is double listed
     extract_layout = [
         [sg.Button('Open File', key='-EXTRACT-')],
-        [sg.Button('Extract current page', key='-EXTRACTCURRENTPAGE-')]]
+        [sg.InputText(key='Extract Save As', do_not_clear=False, enable_events=True, visible=False),
+         sg.FileSaveAs(key='-EXTRACTCURRENTPAGE-', file_types=(('PDF', '*.pdf'),))]]
     return extract_layout
 
 
@@ -118,8 +119,10 @@ def make_explode_frame():
 def make_delete_frame():
     delete_layout = [
         [sg.Button('Open File', key='-DELETE-')],
-        [sg.Button('Run deletion', key='-DODELETION-'), sg.Text('Delete from'), sg.InputText(key='-DELETEFROM-', size=6)
-            , sg.Text('Delete to'), sg.InputText(key='-DELETETO-', size=6)]]
+        [sg.Text('Delete from'), sg.InputText(key='-DELETEFROM-', size=6)
+            , sg.Text('Delete to'), sg.InputText(key='-DELETETO-', size=6),
+         sg.InputText(key='Delete Save As', do_not_clear=False, enable_events=True, visible=False),
+         sg.FileSaveAs(key='-DELETEPAGES-', file_types=(('PDF', '*.pdf'),)), ]]
     return delete_layout
 
 
@@ -157,21 +160,19 @@ def make_window(theme):
 
 def setup_preview_window(mywindow):
     fname = sg.popup_get_file("Select file and filetype to open:", title="PyMuPDF Document Browser",
-                              file_types=(("PDF Files", "*.pdf"),), keep_on_top=True, location=(200, 200), font=('Calibri', 10))
+                              file_types=(("PDF Files", "*.pdf"),), keep_on_top=True, location=(200, 200),
+                              font=('Calibri', 10))
     if fname is None or fname == '':  # user pressed X or Cancel
         return None, None, None, None, None
     else:
         pdfdocument, current_image, page_count, page_number = process_file(fname)
-        # print(type(mydata))
-        #  mywindow.Element('-PREVIEWFRAME-').Update(visible=True)
         mywindow.Element('-PAGENUMBER-').Update('1 of')
         mywindow.Element('-PREVIEW-').Update(data=current_image)
         mywindow.Element('-TotalPages-').Update(str(page_count) + ' Pages')
         return fname, pdfdocument, current_image, page_count, page_number
 
 
-def do_extraction(fname, page_number):
-    save_filename = tk.filedialog.asksaveasfilename(filetypes=[('PDF', '.pdf')])
+def do_extraction(fname, page_number, save_filename):
     if save_filename:
         print(save_filename)
         # p = pathlib.Path(fname)
@@ -181,9 +182,10 @@ def do_extraction(fname, page_number):
         out_pdf = fitz.open()
         out_pdf.insert_pdf(src_pdf, from_page=page_number, to_page=page_number)
         out_pdf.save(save_filename)
+        sg.popup('File saved', keep_on_top=True)
 
 
-def do_explosion(window, fname):
+def do_explosion(fname):
     basename = os.path.splitext(os.path.basename(fname))[0]
     directory = os.path.dirname(fname) + '/'
 
@@ -192,11 +194,9 @@ def do_explosion(window, fname):
         out_pdf = fitz.open()
         out_pdf.insert_pdf(src_pdf, from_page=page, to_page=page)
         out_pdf.save(directory + '{}_page_{}.pdf'.format(basename, page + 1))
-    #  window_switcher()
 
 
-def do_deletion(fname, page_from, page_to):
-    # print('checking validity')
+def do_deletion(fname, page_from, page_to, save_filename):
     if not valid_page_range(fname, page_from, page_to):
         sg.popup("There is something wrong with the specified range", keep_on_top=True)
         print('invalid')
@@ -205,8 +205,8 @@ def do_deletion(fname, page_from, page_to):
         page_to = int(page_to) - 1
         src_pdf = fitz.open(fname)
         src_pdf.delete_pages(page_from, page_to)
-        save_filename = tk.filedialog.asksaveasfilename(filetypes=[('PDF', '.pdf')])
         src_pdf.save(save_filename, garbage=3, clean=True, deflate=True)
+        sg.popup('Edited file saved', keep_on_top=True)
 
 
 def digits_only(string_to_test):
@@ -283,13 +283,12 @@ def main():
             print('fname is ', fname)
             window.Element('-PREVIEWFRAME-').Update(visible=True)
             print("[LOG] User chose file: " + str(fname))
-        elif event == "-EXTRACTCURRENTPAGE-":
+        elif event == "Extract Save As":
             print("[LOG] Extracting a page")
             if 'fname' not in locals():
                 sg.popup("You haven't opened a file yet", keep_on_top=True, font=('Calibri', 10))
             else:
-                do_extraction(fname, page_number)
-            # print(fname + ' ' + str(page_count) + ' ' + str(page_number))
+                do_extraction(fname, page_number, values['-EXTRACTCURRENTPAGE-'])  # value is filename
         elif event == "-EXPLODE-":
             print("[LOG] Open file for explode")
             fname, pdfdocument, current_image, page_count, page_number = setup_preview_window(window)
@@ -297,19 +296,23 @@ def main():
             window.Element('-PREVIEWFRAME-').Update(visible=True)
             print("[LOG] User chose file: " + str(fname))
         elif event == "-EXPLODEDOCUMENT-":
-            print("[LOG] Extracting a page")
-            do_explosion(window, fname)
+            if 'fname' not in locals():
+                sg.popup("You haven't opened a file yet", keep_on_top=True, font=('Calibri', 10))
+            else:
+                do_explosion(fname)
         elif event == "-DELETE-":
             print("[LOG] Open file for delete")
             fname, pdfdocument, current_image, page_count, page_number = setup_preview_window(window)
             print('fname is ', fname)
             window.Element('-PREVIEWFRAME-').Update(visible=True)
-            print("[LOG] User chose file: " + str(fname))
-        elif event == "-DODELETION-":
+        elif event == "Delete Save As":
             print("[LOG] Deleting a page")
             page_from = values['-DELETEFROM-']
             page_to = values['-DELETETO-']
-            do_deletion(fname, page_from, page_to)
+            if 'fname' not in locals():
+                sg.popup("You haven't opened a file yet", keep_on_top=True, font=('Calibri', 10))
+            else:
+                do_deletion(fname, page_from, page_to, values['-DELETEPAGES-'])
         elif event == "Next":
             if 'pdfdocument' in locals():
                 if page_number < page_count - 1:  # have to wrap around
