@@ -285,7 +285,10 @@ def main():
             print("[LOG] User chose file: " + str(fname))
         elif event == "-EXTRACTCURRENTPAGE-":
             print("[LOG] Extracting a page")
-            do_extraction(fname, page_number)
+            if 'fname' not in locals():
+                sg.popup("You haven't opened a file yet", keep_on_top=True, font=('Calibri', 10))
+            else:
+                do_extraction(fname, page_number)
             # print(fname + ' ' + str(page_count) + ' ' + str(page_number))
         elif event == "-EXPLODE-":
             print("[LOG] Open file for explode")
