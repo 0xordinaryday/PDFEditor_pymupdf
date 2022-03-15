@@ -6,13 +6,12 @@ import PySimpleGUI as sg
 import sys
 import fitz
 import os
-import tkinter as tk
 
 display_list_table = []
+merge_file_list = []
 
 if sys.platform == "win32":
     import ctypes
-
     ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
 
@@ -100,7 +99,7 @@ def make_main_frame():
     return main_frame
 
 
-def make_extract_frame():
+def make_extract_layout():
     #  note tab group is expecting list[list] so this is double listed
     extract_layout = [
         [sg.Button('Open File', key='-EXTRACT-')],
@@ -109,14 +108,14 @@ def make_extract_frame():
     return extract_layout
 
 
-def make_explode_frame():
+def make_explode_layout():
     explode_layout = [
         [sg.Button('Open File', key='-EXPLODE-')],
         [sg.Button('Explode current document', key='-EXPLODEDOCUMENT-')]]
     return explode_layout
 
 
-def make_delete_frame():
+def make_delete_layout():
     delete_layout = [
         [sg.Button('Open File', key='-DELETE-')],
         [sg.Text('Delete from'), sg.InputText(key='-DELETEFROM-', size=6)
@@ -126,10 +125,21 @@ def make_delete_frame():
     return delete_layout
 
 
+def make_merge_layout():
+    merge_layout = [
+        [sg.Input(key='-MERGE-'), sg.FilesBrowse(file_types=(('PDF', '*.pdf'),))],
+        [sg.Button('Add')],
+        [sg.Listbox(values=[''], key='-LISTBOXLIST-', size=(30, 6), expand_y=True, expand_x=True),
+         sg.InputText(key='Merge Save As', do_not_clear=False, enable_events=True, visible=False),
+         sg.FileSaveAs(key='-MERGEFILES-', file_types=(('PDF', '*.pdf'),)), ]]
+    return merge_layout
+
+
 def make_tab_group():
-    tab_group_layout = [[sg.Tab('Extract', make_extract_frame(), key='-EXTRACTTAB-'),
-                         sg.Tab('Explode', make_explode_frame(), key='-EXPLODETAB-'),
-                         sg.Tab('Delete', make_delete_frame(), key='-DELETETAB-'),
+    tab_group_layout = [[sg.Tab('Extract', make_extract_layout(), key='-EXTRACTTAB-'),
+                         sg.Tab('Explode', make_explode_layout(), key='-EXPLODETAB-'),
+                         sg.Tab('Delete', make_delete_layout(), key='-DELETETAB-'),
+                         sg.Tab('Merge', make_merge_layout(), key='-MERGETAB-'),
                          ]]
     return tab_group_layout
 
@@ -238,6 +248,14 @@ def valid_page_range(fname, page_from, page_to):
         return True
 
 
+def add_files_to_merge_list(window, filelist):
+    global merge_file_list
+    for entry in filelist.split(';'):
+        if entry not in merge_file_list:
+            merge_file_list.append(entry)
+    window.Element('-LISTBOXLIST-').Update(merge_file_list)
+
+
 def main():
     window = make_window(sg.theme())
 
@@ -313,6 +331,8 @@ def main():
                 sg.popup("You haven't opened a file yet", keep_on_top=True, font=('Calibri', 10))
             else:
                 do_deletion(fname, page_from, page_to, values['-DELETEPAGES-'])
+        elif event == "Add":
+            add_files_to_merge_list(window, values['-MERGE-'])
         elif event == "Next":
             if 'pdfdocument' in locals():
                 if page_number < page_count - 1:  # have to wrap around
