@@ -169,8 +169,7 @@ def make_window(theme):
     layout[-1].append(sg.Sizegrip())
     window = sg.Window('PDF Editor', layout, right_click_menu=right_click_menu_def,
                        right_click_menu_tearoff=True, grab_anywhere=True, resizable=True, margins=(0, 0),
-                       use_custom_titlebar=True, finalize=True, keep_on_top=True,
-                       # scaling=2.0,
+                       use_custom_titlebar=True, finalize=True, keep_on_top=True,  # scaling=2.0,
                        )
     window.set_min_size(size=(800, 400))
     return window

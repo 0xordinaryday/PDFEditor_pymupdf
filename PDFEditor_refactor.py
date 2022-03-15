@@ -130,14 +130,15 @@ def make_window(theme):
     headings = ["Name", "Score"]
 
     layout = [[sg.MenubarCustom(menu_def, background_color='white', text_color='black', key='-MENU-',
-                                font=('Roboto', 10), tearoff=False)]]
+                                font=('Calibri', 10), tearoff=False)]]
 
     layout += [[make_main_frame(), make_extract_frame(), make_delete_frame(), make_explode_frame(), make_preview()]]
 
     layout[-1].append(sg.Sizegrip())
     window = sg.Window('PDF Editor', layout, right_click_menu=right_click_menu_def,
                        right_click_menu_tearoff=True, grab_anywhere=True, resizable=True, margins=(0, 0),
-                       use_custom_titlebar=True, finalize=True, keep_on_top=True, location=(50, 50))
+                       use_custom_titlebar=True, finalize=True, keep_on_top=True, location=(50, 50),
+                       font=('Calibri', 10), titlebar_font=('Calibri', 11))
     window.set_min_size(size=(0, 0))
     return window
 
@@ -170,7 +171,7 @@ def do_extraction(fname, page_number):
         out_pdf.save(save_filename)
 
 
-def do_explosion(fname):
+def do_explosion(window,fname):
     basename = os.path.splitext(os.path.basename(fname))[0]
     directory = os.path.dirname(fname) + '/'
 
@@ -179,10 +180,11 @@ def do_explosion(fname):
         out_pdf = fitz.open()
         out_pdf.insert_pdf(src_pdf, from_page=page, to_page=page)
         out_pdf.save(directory + '{}_page_{}.pdf'.format(basename, page + 1))
+    #  window_switcher()
 
 
 def do_deletion(fname, page_from, page_to):
-    print('checking validity')
+    # print('checking validity')
     if not valid_page_range(fname, page_from, page_to):
         sg.popup("There is something wrong with the specified range", keep_on_top=True)
         print('invalid')
@@ -196,6 +198,10 @@ def do_deletion(fname, page_from, page_to):
 
 
 def digits_only(string_to_test):
+    '''
+    :param string_to_test: value from window is a string, not an integer. Need to test if it is an integer.
+    :return: True if the string only contains digits, false otherwise
+    '''
     digits = '0123456789'
     for entry in string_to_test:
         if entry not in digits:
@@ -225,7 +231,7 @@ def main():
 
     # This is an Event Loop
     while True:
-        event, values = window.read(timeout=100)
+        window, event, values = sg.read_all_windows(timeout=100)
         # keep an animation running so show things are happening
         if event not in (sg.TIMEOUT_EVENT, sg.WIN_CLOSED):
             print('============ Event = ', event, ' ==============')
@@ -277,7 +283,7 @@ def main():
             print("[LOG] User chose file: " + str(fname))
         elif event == "-EXPLODEDOCUMENT-":
             print("[LOG] Extracting a page")
-            do_explosion(fname)
+            do_explosion(window,fname)
         elif event == "-DELETE-":
             print("[LOG] Open file for delete")
             fname, pdfdocument, current_image, page_count, page_number = setup_preview_window(window)
@@ -325,5 +331,5 @@ def main():
 
 
 if __name__ == '__main__':
-    sg.theme('DefaultNoMoreNagging')  # sg.theme('DarkGrey7')
+    sg.theme('SystemDefault1')  # sg.theme('DarkGrey7')
     main()
